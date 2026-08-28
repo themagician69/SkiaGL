@@ -81,7 +81,7 @@ jobs:
         echo "Generating app/build.gradle..."
         cat << 'EOF' > app/build.gradle
         plugins {
-            id 'com.android.application'
+            id 'com.android.application' version '8.2.2'
         }
 
         android {
