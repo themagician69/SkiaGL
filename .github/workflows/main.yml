@@ -1,4 +1,4 @@
-name: Auto-Generate and Build SkiaGL Module
+name: Auto-Generate and Build Modern SkiaGL Module
 
 on:
   workflow_dispatch:
@@ -22,7 +22,7 @@ jobs:
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
 
-    # --- AUTOMATIC FILE CREATION STEP ---
+    # --- AUTOMATIC FILE CREATION STEP (MODERN API) ---
     - name: Generate Project Files Automatically
       run: |
         echo "Creating directory structure..."
@@ -35,48 +35,67 @@ jobs:
             package="com.example.skiaglforcer">
             <application android:label="SkiaGL Forcer">
                 <meta-data android:name="xposedmodule" android:value="true" />
-                <meta-data android:name="xposeddescription" android:value="Forces apps in scope to use SkiaGL instead of SkiaVK" />
-                <meta-data android:name="xposedminversion" android:value="93" />
+                <meta-data android:name="xposeddescription" android:value="Forces apps in scope to use SkiaGL instead of SkiaVK using modern LibXposed" />
+                <meta-data android:name="xposedminversion" android:value="102" />
             </application>
         </manifest>
         EOF
 
-        echo "Generating MainHook.java..."
-        cat << 'EOF' > app/src/main/java/com/example/skiaglforcer/MainHook.java
+        echo "Generating MainModule.java (Modern API)..."
+        cat << 'EOF' > app/src/main/java/com/example/skiaglforcer/MainModule.java
         package com.example.skiaglforcer;
 
         import android.util.Log;
-        import de.robv.android.xposed.IXposedHookLoadPackage;
-        import de.robv.android.xposed.XC_MethodHook;
-        import de.robv.android.xposed.XposedBridge;
-        import de.robv.android.xposed.XposedHelpers;
-        import de.robv.android.xposed.callbacks.XC_LoadPackage;
+        import io.github.libxposed.api.XposedModule;
+        import io.github.libxposed.api.XposedModuleInterface;
+        import io.github.libxposed.api.annotations.XposedModuleInfo;
 
-        public class MainHook implements IXposedHookLoadPackage {
+        @XposedModuleInfo(author = "SkiaGLForcer", description = "Forces SkiaGL via modern LibXposed API", version = "1.0")
+        public class MainModule extends XposedModule {
+
             private static final String TAG = "SkiaGLForcer";
+
+            public MainModule(XposedModuleInterface.ModuleLoadedParam param) {
+                super(param);
+            }
+
             @Override
-            public void handleLoadPackage(XC_LoadPackage.LoadPackageParam lpparam) throws Throwable {
-                if (lpparam.packageName.equals("android") || lpparam.packageName.equals("com.android.systemui")) return;
+            public void onPackageLoaded(XposedModuleInterface.PackageLoadedParam param) {
+                super.onPackageLoaded(param);
+
+                if (param.getPackageName().equals("android") || param.getPackageName().equals("com.android.systemui")) {
+                    return;
+                }
+
                 try {
-                    Class<?> systemProperties = XposedHelpers.findClass("android.os.SystemProperties", lpparam.classLoader);
-                    XposedHelpers.findAndHookMethod(systemProperties, "get", String.class, new XC_MethodHook() {
+                    Class<?> systemProperties = getClassLoader().loadClass("android.os.SystemProperties");
+                    
+                    // Hook SystemProperties.get(String key)
+                    hook(systemProperties.getMethod("get", String.class), new XposedModuleInterface.HookCallback() {
                         @Override
-                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            if ("debug.hwui.renderer".equals(param.args[0])) {
+                        public void before(XposedModuleInterface.MethodHookParam param) throws Throwable {
+                            // Empty if needed before execution
+                        }
+
+                        @Override
+                        public void after(XposedModuleInterface.MethodHookParam param) throws Throwable {
+                            String key = (String) param.getArg(0);
+                            if ("debug.hwui.renderer".equals(key)) {
                                 param.setResult("skiagl");
-                                Log.d(TAG, "Forced SkiaGL for: " + lpparam.packageName);
+                                Log.d(TAG, "Forced SkiaGL for package: " + param.getProcessName());
                             }
                         }
                     });
+
                 } catch (Exception e) {
-                    XposedBridge.log(TAG + " Error: " + e.getMessage());
+                    Log.e(TAG, "Failed to hook package: " + param.getPackageName(), e);
                 }
             }
         }
         EOF
 
         echo "Generating xposed_init..."
-        echo "com.example.skiaglforcer.MainHook" > app/src/main/assets/xposed_init
+        echo "com.example.skiaglforcer.MainModule" > app/src/main/assets/xposed_init
 
         echo "Generating app/build.gradle..."
         cat << 'EOF' > app/build.gradle
@@ -103,7 +122,8 @@ jobs:
         }
 
         dependencies {
-            compileOnly 'de.robv.android.xposed:api:82'
+            // Modern LibXposed API dependency from Maven Central
+            compileOnly 'io.github.libxposed:api:102.0.0'
         }
         EOF
 
@@ -126,7 +146,6 @@ jobs:
             repositories {
                 google()
                 mavenCentral()
-                maven { url 'https://maven.alioth.workers.dev/repository/xposed/' }
             }
         }
         rootProject.name = "SkiaGLForcer"
@@ -148,5 +167,5 @@ jobs:
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: SkiaGLForcer-Debug-APK
+        name: SkiaGLForcer-Modern-APK
         path: app/build/outputs/apk/debug/app-debug.apk
