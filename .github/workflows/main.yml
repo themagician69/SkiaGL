@@ -81,11 +81,13 @@ jobs:
         echo "Generating app/build.gradle..."
         cat << 'EOF' > app/build.gradle
         plugins {
-            id 'com.android.application' version '8.1.2' apply false
+            id 'com.android.application'
         }
+
         android {
             namespace 'com.example.skiaglforcer'
             compileSdk 34
+
             defaultConfig {
                 applicationId 'com.example.skiaglforcer'
                 minSdk 24
@@ -93,7 +95,13 @@ jobs:
                 versionCode 1
                 versionName '1.0'
             }
+
+            compileOptions {
+                sourceCompatibility JavaVersion.VERSION_17
+                targetCompatibility JavaVersion.VERSION_17
+            }
         }
+
         dependencies {
             compileOnly 'de.robv.android.xposed:api:82'
         }
@@ -101,7 +109,7 @@ jobs:
 
         echo "Generating root build.gradle..."
         cat << 'EOF' > build.gradle
-        // Root build file intentionally left clean for modern Gradle compatibility
+        // Root build file
         EOF
 
         echo "Generating settings.gradle..."
