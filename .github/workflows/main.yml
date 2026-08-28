@@ -1,7 +1,7 @@
 name: Auto-Generate and Build SkiaGL Module
 
 on:
-  workflow_dispatch: # Allows you to trigger this manually from the GitHub website anytime!
+  workflow_dispatch:
   push:
     branches: [ "main", "master" ]
 
@@ -81,7 +81,7 @@ jobs:
         echo "Generating app/build.gradle..."
         cat << 'EOF' > app/build.gradle
         plugins {
-            id 'com.android.application'
+            id 'com.android.application' version '8.1.2' apply false
         }
         android {
             namespace 'com.example.skiaglforcer'
@@ -101,22 +101,7 @@ jobs:
 
         echo "Generating root build.gradle..."
         cat << 'EOF' > build.gradle
-        buildscript {
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                classpath 'com.android.tools.build:gradle:8.1.2'
-            }
-        }
-        allprojects {
-            repositories {
-                google()
-                mavenCentral()
-                maven { url 'https://maven.alioth.workers.dev/repository/xposed/' }
-            }
-        }
+        // Root build file intentionally left clean for modern Gradle compatibility
         EOF
 
         echo "Generating settings.gradle..."
@@ -143,7 +128,6 @@ jobs:
         echo "Generating gradle.properties..."
         echo "android.useAndroidX=true" > gradle.properties
 
-        # Generate standard Gradle wrapper files if missing
         gradle wrapper
     # ---------------------------------------------
 
